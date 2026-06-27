@@ -30,16 +30,29 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb)
 }
 
+export type Role = 'USER' | 'ADMIN' | 'SUPER_ADMIN'
+
 export interface SessionUser {
   id: string
   phone: string
-  role: 'USER' | 'ADMIN'
+  role: Role
   fullName?: string | null
+  mustChangePassword?: boolean
+  // When set, this session is a SUPER_ADMIN impersonating another account.
+  // Holds the super admin's user id so they can return to themselves.
+  impersonatedBy?: string | null
 }
 
-export async function createSession(userId: string): Promise<string> {
+// impersonatorId — only set when a SUPER_ADMIN opens another account ("Login as").
+// The value is part of the HMAC-signed payload, so it cannot be forged client-side.
+export async function createSession(userId: string, impersonatorId?: string): Promise<string> {
   const payload = Buffer.from(
-    JSON.stringify({ uid: userId, exp: Date.now() + SESSION_MAX_AGE * 1000, n: randomBytes(6).toString('hex') })
+    JSON.stringify({
+      uid: userId,
+      imp: impersonatorId || undefined,
+      exp: Date.now() + SESSION_MAX_AGE * 1000,
+      n: randomBytes(6).toString('hex'),
+    })
   ).toString('base64url')
   return `${payload}.${sign(payload)}`
 }
@@ -55,9 +68,10 @@ export async function getSession(token: string | undefined): Promise<SessionUser
     // Verify integrity before trusting any field.
     if (!safeEqual(mac, sign(payload))) return null
 
-    const { uid, exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8')) as {
+    const { uid, exp, imp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8')) as {
       uid: string
       exp: number
+      imp?: string
     }
     if (!uid || !exp || Date.now() > exp) return null
 
@@ -66,8 +80,10 @@ export async function getSession(token: string | undefined): Promise<SessionUser
     return {
       id: user.id,
       phone: user.phone,
-      role: user.role as 'USER' | 'ADMIN',
+      role: user.role as Role,
       fullName: user.fullName,
+      mustChangePassword: user.mustChangePassword,
+      impersonatedBy: imp || null,
     }
   } catch {
     return null

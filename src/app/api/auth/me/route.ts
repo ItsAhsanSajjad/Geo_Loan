@@ -25,9 +25,15 @@ export async function GET() {
       walletBalance: true,
       withdrawUnlocked: true,
       currentLoanId: true,
+      mustChangePassword: true,
     },
   })
   // returning-customer signal for the loyalty (lower interest) rate
   const repaidLoans = user ? await db.loan.count({ where: { userId: user.id, status: 'REPAID' } }) : 0
-  return NextResponse.json({ user: user ? { ...user, repaidLoans } : null })
+  // Impersonation banner: when a super admin is acting as this account.
+  const impersonatedBy = session.impersonatedBy || null
+  return NextResponse.json({
+    user: user ? { ...user, repaidLoans } : null,
+    impersonating: !!impersonatedBy,
+  })
 }

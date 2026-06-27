@@ -24,7 +24,8 @@ model User {
   email        String?
   dob          String?
   address      String?
-  role         String   @default("USER") // USER | ADMIN
+  role         String   @default("USER") // USER | ADMIN | SUPER_ADMIN
+  mustChangePassword Boolean @default(false) // forces a password change on next login (set by a super-admin reset)
   kycStatus    String   @default("PENDING") // PENDING | SUBMITTED | APPROVED | REJECTED
   kycNote      String?            // admin feedback shown to the user on rejection
   kycSubmittedAt DateTime?        // when KYC was submitted (drives the review timer)
@@ -187,7 +188,25 @@ model Setting {
   adminPassword    String  @default("admin123")
   apkPath          String?            // public path to the uploaded Android APK
   apkVersion       String?            // optional label shown on the download button
+  maintenanceMode    Boolean @default(false) // when true, only SUPER_ADMIN can use the app
+  maintenanceMessage String?                  // message shown while under maintenance
   updatedAt DateTime @updatedAt
+}
+
+// ============ AUDIT LOG (super-admin actions: who / what / when / IP) ============
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?            // user id of the actor (super admin)
+  actorPhone String?            // phone snapshot
+  role       String?            // actor role at the time
+  action     String             // e.g. SUPERADMIN_LOGIN, RESET_PASSWORD, TOGGLE_MAINTENANCE, SET_ROLE
+  target     String?            // affected entity (user id/phone, setting key)
+  detail     String?            // human-readable detail (never secrets/plaintext passwords)
+  ip         String?            // best-effort client IP
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
 }
 
 // ============ REEL (customer testimonial videos for the landing page) ============

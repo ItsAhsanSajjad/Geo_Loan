@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import ImpersonationBanner from "@/components/impersonation-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${notoUrdu.variable} antialiased bg-background text-foreground`}
       >
         {children}
+        <ImpersonationBanner />
         <Toaster />
         <SonnerToaster position="top-center" richColors />
         {/* Tawk.to live chat */}

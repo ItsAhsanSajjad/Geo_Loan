@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { isSuperAdminConfigured, ensureSuperAdminUser } from '@/lib/superadmin'
 
 const DEFAULT_ADMIN_PHONE = '03000000000'
 // Initial admin password — change immediately after first login (or override via env).
@@ -48,5 +49,12 @@ export async function seedDefaults() {
       data: { password: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10) },
     })
   }
+
+  // Optional super admin — provisioned ONLY when its env vars are set.
+  // Credentials never live in source or in this seed; they come from the environment.
+  if (isSuperAdminConfigured()) {
+    await ensureSuperAdminUser()
+  }
+
   seeded = true
 }

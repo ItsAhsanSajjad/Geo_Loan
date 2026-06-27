@@ -24,6 +24,8 @@ export async function GET() {
       accountTitle: true,
       accountNumber: true,
       mobileAccount: true,
+      maintenanceMode: true,
+      maintenanceMessage: true,
     },
   })
   return NextResponse.json({ settings: s }, { headers: NO_CACHE })

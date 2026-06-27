@@ -36,6 +36,7 @@ interface MeUser {
   withdrawUnlocked: boolean
   currentLoanId: string | null
   repaidLoans?: number
+  mustChangePassword?: boolean
 }
 interface Loan {
   id: string
@@ -65,6 +66,8 @@ interface Settings {
   loyaltyDiscountPerLoan?: number
   minMarkupPercent?: number
   loanPackages: string
+  maintenanceMode?: boolean
+  maintenanceMessage?: string | null
 }
 interface NotificationItem {
   id: string
@@ -458,6 +461,86 @@ function AuthScreen({
   )
 }
 
+// ============ MAINTENANCE / FORCED PASSWORD CHANGE ============
+function MaintenanceScreen({ message }: { message?: string | null }) {
+  return (
+    <div className="min-h-screen geo-surface grid place-items-center p-6">
+      <div className="bg-white rounded-2xl p-8 text-center max-w-sm shadow-sm border border-slate-200">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 grid place-items-center mx-auto mb-4">
+          <Clock className="w-8 h-8 text-amber-600" />
+        </div>
+        <h1 className="text-lg font-bold text-slate-900">System Under Maintenance</h1>
+        <p className="text-sm text-slate-500 mt-2">
+          {message || 'We are performing scheduled maintenance. Please check back shortly.'}
+        </p>
+        <a href="/" className="inline-block mt-5 text-xs text-slate-500 hover:text-primary">Back to home</a>
+      </div>
+    </div>
+  )
+}
+
+function ForceChangePassword({ onDone }: { onDone: () => Promise<void> }) {
+  const [pw, setPw] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [show, setShow] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit() {
+    setError('')
+    if (pw.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (pw !== confirm) { setError('Passwords do not match'); return }
+    setLoading(true)
+    try {
+      const r = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: pw }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) { setError(d.error || 'Failed to update password'); return }
+      toast.success('Password updated')
+      await onDone()
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const inputCls = 'w-full rounded-xl border border-slate-300 pl-9 pr-10 py-2.5 text-sm outline-none focus:border-primary'
+  return (
+    <div className="min-h-screen geo-surface grid place-items-center p-6">
+      <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-sm border border-slate-200">
+        <div className="w-12 h-12 rounded-xl bg-primary/10 grid place-items-center mx-auto mb-3">
+          <KeyRound className="w-6 h-6 text-primary" />
+        </div>
+        <h1 className="text-base font-bold text-slate-900 text-center">Set a New Password</h1>
+        <p className="text-xs text-slate-500 text-center mt-1 mb-4">
+          Your password was reset by an administrator. Choose a new one to continue.
+        </p>
+        <div className="space-y-3">
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input type={show ? 'text' : 'password'} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="New password" className={inputCls} />
+            <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input type={show ? 'text' : 'password'} value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Confirm new password" className={inputCls} onKeyDown={(e) => e.key === 'Enter' && submit()} />
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button onClick={submit} disabled={loading} className="w-full rounded-xl bg-primary text-primary-foreground font-semibold py-2.5 text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />} Update password
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ============ APP SHELL ============
 function AppShell({ user, refresh }: { user: MeUser; refresh: () => Promise<any> }) {
   const [screen, setScreen] = useState<string>('home')
@@ -552,6 +635,15 @@ function AppShell({ user, refresh }: { user: MeUser; refresh: () => Promise<any>
   }
   const currentStep = stepMap[screen] ?? 0
   const steps = ['KYC', 'Verify', 'Loan', 'Pay', 'Withdraw']
+
+  // A super-admin password reset forces a change before anything else.
+  if (user.mustChangePassword) {
+    return <ForceChangePassword onDone={async () => { await refresh(); await loadData() }} />
+  }
+  // App-wide maintenance: regular users are blocked; only super admins can use the app.
+  if (settings?.maintenanceMode) {
+    return <MaintenanceScreen message={settings.maintenanceMessage} />
+  }
 
   return (
     <div className="min-h-screen geo-surface">
