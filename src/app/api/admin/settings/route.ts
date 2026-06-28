@@ -17,7 +17,8 @@ export async function GET() {
 // PUT /api/admin/settings
 // Body: partial settings object. `adminPassword`, if present, updates the admin
 // user's bcrypt-hashed password — it is NOT stored as plaintext in Settings.
-export async function PUT(req: NextRequest) {
+// Uses POST (not PUT) — the shared host blocks PUT/DELETE methods.
+export async function POST(req: NextRequest) {
   const admin = await requireAdmin()
   if (admin instanceof NextResponse) return admin
 

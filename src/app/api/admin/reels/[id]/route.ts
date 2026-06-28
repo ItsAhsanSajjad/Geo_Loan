@@ -4,8 +4,8 @@ import path from 'path'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/session'
 
-// DELETE /api/admin/reels/[id]
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+// POST /api/admin/reels/[id] — delete a reel (POST not DELETE; host blocks DELETE)
+export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
   if (admin instanceof NextResponse) return admin
 

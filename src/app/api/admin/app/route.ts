@@ -15,9 +15,19 @@ export async function GET() {
 }
 
 // POST /api/admin/app  (multipart: file=.apk, version?)
+// POST /api/admin/app?action=remove  -> remove the current APK (host blocks DELETE)
 export async function POST(req: NextRequest) {
   const admin = await requireAdmin()
   if (admin instanceof NextResponse) return admin
+
+  if (req.nextUrl.searchParams.get('action') === 'remove') {
+    const prev = await db.setting.findUnique({ where: { id: 'default' }, select: { apkPath: true } })
+    if (prev?.apkPath?.startsWith('/downloads/')) {
+      try { await fs.unlink(path.join(process.cwd(), 'public', prev.apkPath.replace(/^\//, ''))) } catch {}
+    }
+    await db.setting.update({ where: { id: 'default' }, data: { apkPath: null, apkVersion: null } })
+    return NextResponse.json({ ok: true })
+  }
 
   const fd = await req.formData()
   const file = fd.get('file') as File | null
@@ -48,16 +58,4 @@ export async function POST(req: NextRequest) {
     create: { id: 'default', apkPath: `/downloads/${filename}`, apkVersion: version || null },
   })
   return NextResponse.json({ ok: true, apkPath: s.apkPath, apkVersion: s.apkVersion })
-}
-
-// DELETE /api/admin/app -> remove the current APK
-export async function DELETE() {
-  const admin = await requireAdmin()
-  if (admin instanceof NextResponse) return admin
-  const prev = await db.setting.findUnique({ where: { id: 'default' }, select: { apkPath: true } })
-  if (prev?.apkPath?.startsWith('/downloads/')) {
-    try { await fs.unlink(path.join(process.cwd(), 'public', prev.apkPath.replace(/^\//, ''))) } catch {}
-  }
-  await db.setting.update({ where: { id: 'default' }, data: { apkPath: null, apkVersion: null } })
-  return NextResponse.json({ ok: true })
 }

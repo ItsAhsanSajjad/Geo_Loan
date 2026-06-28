@@ -814,7 +814,7 @@ function KycTab() {
   const delCase = async (id: string) => {
     if (!window.confirm('Delete this KYC case record? This cannot be undone.')) return
     try {
-      const r = await fetch(`/api/admin/kyc/history/${id}`, { method: 'DELETE' })
+      const r = await fetch(`/api/admin/kyc/history/${id}`, { method: 'POST' })
       if (r.ok) { toast.success('KYC case deleted'); load() } else toast.error('Could not delete')
     } catch { toast.error('Could not delete') }
   }
@@ -822,7 +822,7 @@ function KycTab() {
   const delUser = async (id: string, name: string) => {
     if (!window.confirm(`Delete ${name}'s account and ALL their data (KYC, loans, payments)? This cannot be undone.`)) return
     try {
-      const r = await fetch(`/api/admin/kyc/${id}`, { method: 'DELETE' })
+      const r = await fetch(`/api/admin/kyc/${id}`, { method: 'POST' })
       const d = await r.json().catch(() => ({}))
       if (r.ok) { toast.success('User & KYC deleted'); load() } else toast.error(d.error || 'Could not delete')
     } catch { toast.error('Could not delete') }
@@ -1517,7 +1517,7 @@ function ReelsTab() {
   const del = async (id: string) => {
     if (!window.confirm('Delete this video? This cannot be undone.')) return
     try {
-      const r = await fetch(`/api/admin/reels/${id}`, { method: 'DELETE' })
+      const r = await fetch(`/api/admin/reels/${id}`, { method: 'POST' })
       const d = await r.json().catch(() => ({}))
       if (r.ok) { toast.success('Video deleted'); load() }
       else toast.error(d.error || 'Could not delete')
@@ -1624,7 +1624,7 @@ function AppApkUploader() {
 
   const remove = async () => {
     if (!window.confirm('Remove the app download from the home page?')) return
-    const r = await fetch('/api/admin/app', { method: 'DELETE' })
+    const r = await fetch('/api/admin/app?action=remove', { method: 'POST' })
     if (r.ok) { toast.success('Removed'); load() } else toast.error('Could not remove')
   }
 
@@ -1692,7 +1692,7 @@ function SettingsTab() {
     try {
       const packages = JSON.stringify(packagesText.split(',').map((x) => parseInt(x.trim())).filter((n) => !isNaN(n) && n > 0))
       const r = await fetch('/api/admin/settings', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...s, loanPackages: packages }),
       })

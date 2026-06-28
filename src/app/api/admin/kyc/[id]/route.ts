@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/session'
 
-// DELETE /api/admin/kyc/[id] -> delete a user account and ALL their data
+// POST /api/admin/kyc/[id] -> delete a user account and ALL their data
 // (KYC, loans, payments, withdrawals, notifications cascade). For removing
 // test/spam KYC entries. Admin cannot delete their own account.
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+// Uses POST (not DELETE) — the shared host blocks PUT/DELETE methods.
+export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const admin = await requireAdmin()
   if (admin instanceof NextResponse) return admin
 
