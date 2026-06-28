@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { isSuperAdminConfigured, ensureSuperAdminUser } from '@/lib/superadmin'
+import { ensureSchema } from '@/lib/ensure-schema'
 
 const DEFAULT_ADMIN_PHONE = '03000000000'
 // Initial admin password — change immediately after first login (or override via env).
@@ -11,6 +12,8 @@ const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || 'admin123'
 let seeded = false
 export async function seedDefaults() {
   if (seeded) return // run once per process — avoid redundant DB writes on every login/register
+  // Make sure the new columns/tables exist before any query touches them.
+  await ensureSchema()
   // Settings. adminPassword column is no longer used for auth — kept blank so no
   // plaintext credential is ever stored in this table.
   await db.setting.upsert({
